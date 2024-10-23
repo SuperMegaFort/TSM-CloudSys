@@ -1,6 +1,3 @@
-# Creator: Abir Chebbi (abir.chebbi@hesge.ch)
-# Updated: Jonas Flückiger (jonas.fluckiger@master.hes-so.ch)
-
 from typing import List, Optional
 
 from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
@@ -13,13 +10,13 @@ from langchain_core.documents import Document
 
 ##################################
 ##################################
-import pinecone
+from pinecone import Pinecone,ServerlessSpec
 
 # Initialize Pinecone
-pinecone.init(
-    api_key=os.getenv('PINECONE_API_KEY'),  # Get API key from environment variable
-    environment=os.getenv('PINECONE_ENVIRONMENT')  # Get environment from environment variable
+pc = Pinecone(
+    api_key="#"
 )
+
 ##################################
 ##################################
 
@@ -78,7 +75,7 @@ def download_documents(bucket_name: str, local_dir: str) -> None:
 
         # Download the blob to the local file path
         blob.download_to_filename(local_file_path)
-        print(f"Downloaded {blob.name} to {local_file_path}.pdf")
+        print(f"Downloaded {blob.name} to {local_file_path}")
 
 
 # Split pages/text into chunks
@@ -92,7 +89,7 @@ def split_text(docs: List[Document], chunk_size: int, chunk_overlap: int) -> Lis
     return chunks
 
 
-def main(bucket_name: str, local_dir: str):
+def main(bucket_name: str, local_dir: str,index_name:str ):
     download_documents(bucket_name, local_dir)
     loader = PyPDFDirectoryLoader(local_dir)
     docs = loader.load()
@@ -108,33 +105,24 @@ def main(bucket_name: str, local_dir: str):
     #####################################
     #####################################
 
-    index_name = args.index_name
-
+    #
     # Create the index if it doesn't exist
-    if index_name not in pinecone.list_indexes():
-        pinecone.create_index(
+    if  not pc.has_index(index_name) :
+        pc.create_index(
             name=index_name,
             dimension=embedding_dimension,
-            metric="cosine" 
+            metric="cosine" ,
+            spec=ServerlessSpec(
+                cloud='aws',
+                region='us-east-1'
         )
-    
-    # Prepare data for Pinecone upload
-    data_to_upload = []
-    for index, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
-        chunk_data = {
-            'id': str(index),  
-            'values': embedding,  
-            'metadata': chunk.metadata  
-        }
-        data_to_upload.append(chunk_data)
+        )
+    index = pc.Index(index_name)
 
-    # Upload to Pinecone
-    # index.upsert(vectors=data_to_upload)
-    
-    # to_upsert = [(str(i), embedding, {'metadata': chunk.metadata}) for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))]
-    # index.upsert(vectors=to_upsert)
+    to_upsert = [(str(i), embedding) for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))]
+    index.upsert(vectors=to_upsert)
 
-    
+
 
     ####################################
     ####################################
