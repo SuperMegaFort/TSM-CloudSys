@@ -1,0 +1,5 @@
+python3 create-S3-and-put-docs.py --bucket_name groupe12 --local_path /Users/cyriltelley/Desktop/MSE/CloudSys/Part1/PDF
+
+python3 create-vector-db.py --collection_name clt12 --iam_user CloudSys-group-12
+
+python3 vectorise-store.py --bucket_name groupe12 --endpoint s5du17nybjo1v87mwtdf.us-east-1.aoss.amazonaws.com --index_name IndexPdf --local_path local_path
